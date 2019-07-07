@@ -1,0 +1,107 @@
+language: cpp
+
+env:
+  global:
+    - BASE_COMPONENTS="qtbase qtscript"
+    - INSTALL_DIR=~/Qt
+    - QT_VERSION=5.12.4
+    - QTCREATOR_VERSION=4.9.2
+
+stages:
+  - name: Install Qt 5.12.4
+  - name: Install QtCreator/Qbs 4.9.2
+
+jobs:
+  include:
+    - &linux
+      stage: Install Qt 5.12.4
+      os: linux
+      dist: xenial
+      before_install:
+        - sudo apt-get update -y
+        - sudo apt-get install -y p7zip-full
+      env:
+        TOOLCHAIN=gcc_64
+        TARGET_PLATFORM=desktop
+        COMPONENTS="${BASE_COMPONENTS} icu"
+
+    - <<: *linux
+      env:
+        TOOLCHAIN=android_armv7
+        TARGET_PLATFORM=android
+        COMPONENTS="${BASE_COMPONENTS}"
+
+    - <<: *linux
+      env:
+        TOOLCHAIN=android_arm64_v8a
+        TARGET_PLATFORM=android
+        COMPONENTS="${BASE_COMPONENTS}"
+
+    - &osx
+      os: osx
+      osx_image: xcode10.2
+      addons:
+        homebrew:
+          packages: p7zip
+      env:
+        TOOLCHAIN=clang_64
+        TARGET_PLATFORM=desktop
+        COMPONENTS="${BASE_COMPONENTS}"
+
+    - <<: *osx
+      env:
+        TOOLCHAIN=ios
+        TARGET_PLATFORM=ios
+        COMPONENTS="${BASE_COMPONENTS}"
+
+    - <<: *osx
+      env:
+        TOOLCHAIN=android_armv7
+        TARGET_PLATFORM=android
+        COMPONENTS="${BASE_COMPONENTS}"
+
+    - &windows
+      os: windows
+      env:
+        TOOLCHAIN=win64_mingw73
+        TARGET_PLATFORM=desktop
+        COMPONENTS="${BASE_COMPONENTS} release-posix-seh_rt"
+
+    - <<: *windows
+      env:
+        TOOLCHAIN=win64_msvc2017_64
+        TARGET_PLATFORM=desktop
+        COMPONENTS="${BASE_COMPONENTS}"
+
+    - <<: *windows
+      env:
+        TOOLCHAIN=android_armv7
+        TARGET_PLATFORM=android
+        COMPONENTS="${BASE_COMPONENTS}"
+
+
+    - <<: *linux
+      stage: Install QtCreator/Qbs 4.9.2
+      name: Linux
+      script:
+        - QBS_PATH=$(./install-qt -d ${INSTALL_DIR} --version ${QTCREATOR_VERSION} qtcreator)
+        - ${QBS_PATH}/qbs show-version
+
+    - <<: *osx
+      name: macOS
+      env:
+      script:
+        - QBS_PATH=$(./install-qt -d ${INSTALL_DIR} --version ${QTCREATOR_VERSION} qtcreator)
+        - ${QBS_PATH}/qbs show-version
+
+    - <<: *windows
+      name: Windows
+      env:
+      script:
+        - QBS_PATH=$(./install-qt -d ${INSTALL_DIR} --version ${QTCREATOR_VERSION} qtcreator)
+        - ${QBS_PATH}/qbs show-version
+
+script:
+  - |
+    QMAKE_PATH=$(./install-qt -d ${INSTALL_DIR} --target ${TARGET_PLATFORM} --toolchain ${TOOLCHAIN} --version ${QT_VERSION} ${COMPONENTS})
+    ${QMAKE_PATH}/qmake -query
